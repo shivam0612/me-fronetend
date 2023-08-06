@@ -3,221 +3,66 @@ import { Typography, Button, Form, message, Input } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import Dropzone from 'react-dropzone';
 import axios from 'axios';
-import { useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
-
 
 const { Title } = Typography;
 const { TextArea } = Input;
+const { Option } = Select;
 
 const Private = [
-  {
-    value: 0,
-    label: 'Private',
-  },
-  {
-    value: 1,
-    label: 'Public',
-  },
+  { value: 0, label: 'Private' },
+  { value: 1, label: 'Public' },
 ];
 
 const Category = [
-  {
-    value: 0,
-    label: 'Film & Animation',
-  },
-  {
-    value: 1,
-    label: 'Autos & Vehicles',
-  },
-  {
-    value: 2,
-    label: 'Music',
-  },
-  {
-    value: 3,
-    label: 'Pets & Animals',
-  },
-  {
-    value: 4,
-    label: 'Sports',
-  },
+  { value: 0, label: 'Film & Animation' },
+  { value: 1, label: 'Autos & Vehicles' },
+  { value: 2, label: 'Music' },
+  { value: 3, label: 'Pets & Animals' },
+  { value: 4, label: 'Sports' },
 ];
 
 const UploadVideoPage = () => {
-  const { userInfo } = useSelector((state) => state.auth);
-  const navigate = useNavigate();
-
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [privacy, setPrivacy] = useState(0);
-  const [categories, setCategories] = useState('Film & Animation');
-  const [filePath, setFilePath] = useState('');
-  const [duration, setDuration] = useState('');
-  const [thumbnail, setThumbnail] = useState('');
-  const [defaultThumbnail, setDefaultThumbnail] = useState('https://www.teachhub.com/wp-content/uploads/2019/10/Our-Top-10-Songs-About-School-1024x759.png');
+  const [category, setCategory] = useState(0);
+  const [file, setFile] = useState(null);
 
-  const handleChangeTitle = (event) => {
-    setTitle(event.target.value);
-  };
+  const handleTitleChange = (e) => setTitle(e.target.value);
+  const handleDescriptionChange = (e) => setDescription(e.target.value);
+  const handlePrivacyChange = (value) => setPrivacy(value);
+  const handleCategoryChange = (value) => setCategory(value);
 
-  const handleChangeDescription = (event) => {
-    setDescription(event.target.value);
-  };
+  const onDrop = (acceptedFiles) => setFile(acceptedFiles[0]);
 
-  const handleChangePrivacy = (event) => {
-    setPrivacy(event.target.value);
-  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  const handleChangeCategories = (event) => {
-    setCategories(event.target.value);
-  };
-
-  const goBack = () => {
-    navigate('/mshome')
-  }
-  const onSubmit = (event) => {
-    event.preventDefault();
-
-    if (!userInfo) {
-      toast.error('Sign in first!');
+    if (!file) {
+      message.error('Please select a video file.');
       return;
     }
 
-    if (filePath.includes(".mp3")) {
-      if (title === '' || description === '' || filePath === '') {
-        toast.error('Fill in all fields before submitting!');
-        return;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('privacy', privacy);
+    formData.append('category', category);
+
+    try {
+      const res = await axios.post('/api/uploadVideo', formData);
+      if (res.data.success) {
+        message.success('Video uploaded successfully.');
+      } else {
+        message.error('Failed to upload the video.');
       }
-
-      // For audio files, use the variabless object
-      const variables = {
-        user: userInfo.name,
-        title: title,
-        description: description,
-        privacy: privacy,
-        filePath: filePath,
-        category: categories,
-        duration: "",
-        thumbnail: defaultThumbnail,
-      };
-      console.log(variables)
-
-    axios
-        .post('/api/video/uploadVideo', variables)
-        .then((response) => {
-          if (response.data.success) {
-            toast.success('audio uploaded successfully!');
-            navigate('/mshome');
-          } else {
-            toast.error('Failed to upload audio');
-          }
-        })
-        .catch((error) => {
-          toast.error('An error occurred while uploading the video');
-        });
-    } else if (filePath.includes(".mp4")) {
-      if (title === '' || description === '' || filePath === '' || thumbnail === '') {
-        toast.error('Fill in all fields before submitting!');
-        return;
-      }
-
-      // For video files, use the variables object
-      const variables = {
-        user: userInfo.name,
-        title: title,
-        description: description,
-        privacy: privacy,
-        filePath: filePath,
-        category: categories,
-        duration: duration['fileDuration'],
-        thumbnail: thumbnail,
-      };
-
-      axios
-        .post('/api/video/uploadVideo', variables)
-        .then((response) => {
-          if (response.data.success) {
-            toast.success('Video uploaded successfully!');
-            navigate('/mshome');
-          } else {
-            toast.error('Failed to upload video');
-          }
-        })
-        .catch((error) => {
-          toast.error('An error occurred while uploading the video');
-        });
-    } else {
-      toast.error('Unsupported file format');
+    } catch (error) {
+      message.error('An error occurred while uploading the video.');
     }
   };
-  const onDrop = (files) => {
-    let formData = new FormData();
-    const config = {
-      header: { 'content-type': 'multipart/form-data' },
-    };
 
-    formData.append('file', files[0]);
-    const fileExtension = files[0].name.split('.').pop().toLowerCase();
 
-    if (fileExtension === 'mp3') {
-      axios
-        .post('/api/video/uploadfiles', formData, config)
-        .then((response) => {
-          if (response.data.success) {
-            let variable = {
-              filePath: response.data.filePath,
-              fileName: response.data.fileName,
-            };
-            setFilePath(response.data.filePath);
-            
-            setThumbnail(defaultThumbnail)
-            
-          }
-        })  .catch((error) => {
-          toast.error(error);
-        });
-
-    } else if (fileExtension === 'mp4') {
-      // Call the existing function to upload the video
-
-      axios
-        .post('/api/video/uploadfiles', formData, config)
-        .then((response) => {
-          if (response.data.success) {
-            let variable = {
-              filePath: response.data.filePath,
-              fileName: response.data.fileName,
-            };
-            setFilePath(response.data.filePath);
-
-            // Create the thumbnail to display the uploaded video
-            axios
-              .post('/api/video/thumbnail', variable)
-              .then((response) => {
-                if (response.data.success) {
-                  setDuration(response.data.fileDuration);
-                  setThumbnail(`http://localhost:5000/${response.data.thumbsFilePath}`);
-                } else {
-                  toast.error('Failed to create the thumbnail');
-                }
-              })
-              .catch((error) => {
-                toast.error('An error occurred while creating the thumbnail');
-              });
-          } else {
-            toast.error('Video failed to save on the server');
-          }
-        })
-        .catch((error) => {
-          toast.error('An error occurred while uploading the video file');
-        });
-    } else {
-      // Handle unsupported file formats or show an error message
-      toast.error('Unsupported file format');
-    }
-  };
 
   return (
     <div style={{ maxWidth: '700px', margin: '2rem auto' }}>
